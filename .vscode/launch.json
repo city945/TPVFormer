@@ -1,0 +1,38 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    // test
+    // python eval.py --py-config config/tpv04_occupancy.py --ckpt-path model_zoo/download/tpv04_occupancy_v2.pth
+    // python eval.py --py-config config/tpv_lidarseg.py --ckpt-path model_zoo/download/tpv10_lidarseg_v2.pth
+    {
+      "name": "test",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "eval.py",
+      "justMyCode": true,
+      "cwd": "${workspaceFolder}",
+      "env": { "CUDA_VISIBLE_DEVICES": "1" },
+      "args": [
+        "--py-config", "config/tpv04_occupancy.py", "--ckpt-path", "model_zoo/download/tpv04_occupancy_v2.pth",
+        // "--py-config", "config/tpv_lidarseg.py", "--ckpt-path", "model_zoo/download/tpv10_lidarseg_v2.pth",
+      ]
+    },
+    // train
+    // python train.py --py-config config/tpv04_occupancy.py --work-dir out/tpv_occupancy
+    // python train.py --py-config config/tpv_lidarseg.py --work-dir out/tpv_lidarseg
+    {
+      "name": "train",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "train.py",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}",
+      "env": { "CUDA_VISIBLE_DEVICES": "5" },
+      "args": [
+        "--debug",
+        "--py-config", "config/tpv04_occupancy.py", "--work-dir", "out/tpv_occupancy",
+        // "--py-config", "config/tpv_lidarseg.py", "--work-dir", "out/tpv_lidarseg",
+      ]
+    },
+  ]
+}

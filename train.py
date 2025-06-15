@@ -17,6 +17,14 @@ from timm.scheduler import CosineLRScheduler
 import warnings
 warnings.filterwarnings("ignore")
 
+import random
+def set_random_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 def pass_print(*args, **kwargs):
     pass
@@ -28,6 +36,14 @@ def main(local_rank, args):
     # load config
     cfg = Config.fromfile(args.py_config)
     cfg.work_dir = args.work_dir
+    if args.debug:
+        cfg.train_data_loader.batch_size = 1
+        cfg.train_data_loader.num_workers = 0
+        cfg.max_epochs = 2
+        cfg.train_data_loader.DEBUG = True
+        cfg.train_data_loader.seed = 0
+        set_random_seed(0)
+        os.environ["MASTER_PORT"] = "54321"
 
     dataset_config = cfg.dataset_params
     ignore_label = dataset_config['ignore_label']
@@ -319,6 +335,7 @@ if __name__ == '__main__':
     parser.add_argument('--py-config', default='config/tpv_lidarseg.py')
     parser.add_argument('--work-dir', type=str, default='./out/tpv_lidarseg')
     parser.add_argument('--resume-from', type=str, default='')
+    parser.add_argument('--debug', action='store_true', default=False, help='debug setting')
 
     args = parser.parse_args()
     

@@ -3,6 +3,16 @@ from dataloader.dataset import ImagePoint_NuScenes
 from dataloader.dataset_wrapper import custom_collate_fn, DatasetWrapper_NuScenes
 from nuscenes import NuScenes
 
+import random
+import numpy as np
+from functools import partial
+def worker_init_fn(worker_id, seed=None):
+    if seed is not None:
+        random.seed(seed + worker_id)
+        np.random.seed(seed + worker_id)
+        torch.manual_seed(seed + worker_id)
+        torch.cuda.manual_seed(seed + worker_id)
+        torch.cuda.manual_seed_all(seed + worker_id)
 
 def build(dataset_config,
           train_dataloader_config,
@@ -19,6 +29,7 @@ def build(dataset_config,
 
     nusc = NuScenes(version=version, dataroot=data_path, verbose=True)
     train_dataset = ImagePoint_NuScenes(data_path, imageset=train_imageset,
+                                     debug=train_dataloader_config.get('DEBUG', False),
                                      label_mapping=label_mapping, nusc=nusc)
     val_dataset = ImagePoint_NuScenes(data_path, imageset=val_imageset,
                                    label_mapping=label_mapping, nusc=nusc)
@@ -57,6 +68,7 @@ def build(dataset_config,
                                                        collate_fn=custom_collate_fn,
                                                        shuffle=False if dist else train_dataloader_config["shuffle"],
                                                        sampler=sampler,
+                                                       worker_init_fn=partial(worker_init_fn, seed=train_dataloader_config.get('seed', None)),
                                                        num_workers=train_dataloader_config["num_workers"])
     val_dataset_loader = torch.utils.data.DataLoader(dataset=val_dataset,
                                                      batch_size=val_dataloader_config["batch_size"],

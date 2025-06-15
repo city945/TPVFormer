@@ -6,7 +6,7 @@ import pickle
 from mmcv.image.io import imread
 
 class ImagePoint_NuScenes(data.Dataset):
-    def __init__(self, data_path, imageset='train', label_mapping="nuscenes.yaml", nusc=None):
+    def __init__(self, data_path, imageset='train', label_mapping="nuscenes.yaml", nusc=None, debug=False):
         with open(imageset, 'rb') as f:
             data = pickle.load(f)
 
@@ -14,7 +14,7 @@ class ImagePoint_NuScenes(data.Dataset):
             nuscenesyaml = yaml.safe_load(stream)
         self.learning_map = nuscenesyaml['learning_map']
 
-        self.nusc_infos = data['infos']
+        self.nusc_infos = data['infos'][:16] if debug else data['infos']
         self.data_path = data_path
         self.nusc = nusc
 
