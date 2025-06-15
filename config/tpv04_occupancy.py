@@ -90,6 +90,7 @@ model = dict(
             tpv_h=tpv_h_,
             tpv_w=tpv_w_,
             tpv_z=tpv_z_,
+            # TPVFormerLayer 层数
             num_layers=3,
             pc_range=point_cloud_range,
             num_points_in_pillar=num_points_in_pillar,

@@ -118,6 +118,7 @@ class TPVImageCrossAttention(BaseModule):
 
         bs, num_query, _ = query.size()
 
+        # tuple(Size(B, HW, C=256),...len(3))
         queries = torch.split(query, [self.tpv_h*self.tpv_w, self.tpv_z*self.tpv_h, self.tpv_w*self.tpv_z], dim=1)
         if residual is None:
             slots = [torch.zeros_like(q) for q in queries]
@@ -128,6 +129,7 @@ class TPVImageCrossAttention(BaseModule):
         for tpv_idx, tpv_mask in enumerate(tpv_masks):
             indexes = []
             for _, mask_per_img in enumerate(tpv_mask):
+                # 有效点的一维下标，Size(B, HW, 4) -> Size(N) 
                 index_query_per_img = mask_per_img[0].sum(-1).nonzero().squeeze(-1)
                 indexes.append(index_query_per_img)
             max_len = max([len(each) for each in indexes])
@@ -142,6 +144,7 @@ class TPVImageCrossAttention(BaseModule):
             reference_points_rebatch = reference_points_cam.new_zeros(
                 [bs * self.num_cams, max_len, D, 2])
 
+            # 
             for i, reference_points_per_img in enumerate(reference_points_cam):
                 for j in range(bs):
                     index_query_per_img = indexes[i]

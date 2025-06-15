@@ -27,9 +27,12 @@ class PadMultiViewImage(object):
     def _pad_img(self, results):
         """Pad images according to ``self.size``."""
         if self.size is not None:
+            # 用 pad_val=0 填充至指定尺寸
             padded_img = [mmcv.impad(
                 img, shape=self.size, pad_val=self.pad_val) for img in results['img']]
         elif self.size_divisor is not None:
+            # @tag vis 可视化数据变换 PadMultiViewImage: pu4c.det3d.app.image_viewer(data=padded_img[3].astype(np.int32)[:,:,::-1], rpc=True)
+            # 用 pad_val=0 填充至宽高均为 size_divisor=32 的倍数
             padded_img = [mmcv.impad_to_multiple(
                 img, self.size_divisor, pad_val=self.pad_val) for img in results['img']]
         
@@ -87,6 +90,8 @@ class NormalizeMultiviewImage(object):
         results['img'] = [mmcv.imnormalize(img, self.mean, self.std, self.to_rgb) for img in results['img']]
         results['img_norm_cfg'] = dict(
             mean=self.mean, std=self.std, to_rgb=self.to_rgb)
+        # @tag vis 可视化数据变换 NormalizeMultiviewImage: pu4c.det3d.app.image_viewer(data=results['img'][3].astype(np.int32)[:,:,::-1], rpc=True)
+        # 去归一化: pu4c.det3d.app.image_viewer(data=(results['img'][3] + np.array([103.530, 116.280, 123.675])).astype(np.int32)[:,:,::-1], rpc=True)
         return results
 
     def __repr__(self):
@@ -139,6 +144,7 @@ class PhotoMetricDistortionMultiViewImage:
                 'PhotoMetricDistortion needs the input image of dtype np.float32,'\
                 ' please set "to_float32=True" in "LoadImageFromFile" pipeline'
             # random brightness
+            # @% 亮度随机扰动: 从给定的亮度偏差范围内如 [-32,32] 随机出一个浮点数如 30 作为亮度噪声，所有像素灰度值加上该噪声
             if random.randint(2):
                 delta = random.uniform(-self.brightness_delta,
                                     self.brightness_delta)
@@ -146,6 +152,7 @@ class PhotoMetricDistortionMultiViewImage:
 
             # mode == 0 --> do random contrast first
             # mode == 1 --> do random contrast last
+            # @% 对比度随机扰动: 从给定的对比度偏差范围内如 [0.5,1.5] 随机出一个浮点数如 1.4 作为亮度噪声，所有像素灰度值乘以该噪声
             mode = random.randint(2)
             if mode == 1:
                 if random.randint(2):
@@ -153,6 +160,7 @@ class PhotoMetricDistortionMultiViewImage:
                                         self.contrast_upper)
                     img *= alpha
 
+            # @% 饱和度随机扰动: 饱和度为 HSV 颜色空间的第二通道 S，饱和度越高颜色越鲜艳，同理偏差范围内如 [0.5,1.5] 随机一个噪声如 1.4，所有像素饱和度值乘以该噪声
             # convert color from BGR to HSV
             img = mmcv.bgr2hsv(img)
 
@@ -161,6 +169,7 @@ class PhotoMetricDistortionMultiViewImage:
                 img[..., 1] *= random.uniform(self.saturation_lower,
                                             self.saturation_upper)
 
+            # @% 色调随机扰动: 色调为 HSV 的第一通道 H，值域 [0,360] 对应红橙黄绿青蓝紫的色轮，色调增加图像颜色沿色轮顺时针移动，例如原图的红色调会变为橙色调，同理色调减小沿色轮逆时针转，所有像素色调值加上噪声
             # random hue
             if random.randint(2):
                 img[..., 0] += random.uniform(-self.hue_delta, self.hue_delta)
@@ -177,11 +186,13 @@ class PhotoMetricDistortionMultiViewImage:
                                         self.contrast_upper)
                     img *= alpha
 
+            # @% 随机改变颜色通道顺序
             # randomly swap channels
             if random.randint(2):
                 img = img[..., random.permutation(3)]
             new_imgs.append(img)
         results['img'] = new_imgs
+        # @tag vis 可视化数据变换 PhotoMetricDistortionMultiViewImage: pu4c.det3d.app.image_viewer(data=results['img'][3].astype(np.int32)[:,:,::-1], rpc=True)
         return results
 
     def __repr__(self):

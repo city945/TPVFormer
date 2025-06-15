@@ -57,16 +57,21 @@ class TPVFormer(BaseModule):
 
             B, N, C, H, W = img.size()
             img = img.reshape(B * N, C, H, W)
+            # @# 网格掩码数据变换
             if use_grid_mask is None:
                 use_grid_mask = self.use_grid_mask
             if use_grid_mask:
                 img = self.grid_mask(img)
 
+            # @# ResNet101 提取多尺度特征，返回后三个阶段的多个尺度的特征图
+            # Size(B*6,C=3,H=928,W=1600) -> tuple(Size(B*6,C=512,H=116,W=200), Size(B*6,C=1024,H=58,W=100), Size(B*6,C=2048,H=29,W=50))
             img_feats = self.img_backbone(img)
             if isinstance(img_feats, dict):
                 img_feats = list(img_feats.values())
         else:
             return None
+        # @# FPN 多尺度特征融合，返回四个尺度的特征图
+        # -> tuple(Size(B*6,C=256,H=116,W=200), Size(B*6,C=256,H=58,W=100), Size(B*6,C=256,H=29,W=50), Size(B*6,C=256,H=15,W=25))
         if hasattr(self, 'img_neck'):
             img_feats = self.img_neck(img_feats)
 

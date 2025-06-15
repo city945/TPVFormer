@@ -1,0 +1,86 @@
+// 数据结构注释
+{
+	"nuscenes_infos_train.pkl | ds_nus_train_info": "", /* 
+	import pu4c, pprint
+	infos = pu4c.common.utils.read_pickle("nuscenes_infos_train.pkl")
+	print(infos.keys(), infos['metadata'])
+	pprint.pprint(infos['infos'][12])
+	dict_keys(['infos', 'metadata'])
+	{
+		'metadata': {'version': 'v1.0-trainval'},
+		'infos': [{
+			'cams': {
+				'CAM_BACK': {
+					'cam_intrinsic': shape(3, 3),
+					'data_path': './data/nuscenes/samples/CAM_BACK/n015-2018-07-18-11-07-57+0800__CAM_BACK__1531883536437525.jpg',
+					'ego2global_rotation': [-0.3440092999653228, 0.0030211530733666187, 0.011066122457307693, -0.9388961684367638],
+					'ego2global_translation': [992.0761792391231, 633.3004136781226, 0.0],
+					'sample_data_token': '99aed096956646a7a6c39aa35bc12c4d',
+					'sensor2ego_rotation': [0.5037872666382278, -0.49740249788611096, -0.4941850223835201, 0.5045496097725578],
+					'sensor2ego_translation': [0.0283260309358, 0.00345136761476, 1.57910346144],
+					'sensor2lidar_rotation': shape(3, 3),
+					'sensor2lidar_translation': array([-0.00460146, -0.96832593, -0.28458266]),
+					'timestamp': 1531883536437525,
+					'type': 'CAM_BACK'
+				},
+				'CAM_BACK_LEFT' + 'CAM_BACK_RIGHT'
+				'CAM_FRONT' + 'CAM_FRONT_LEFT' + 'CAM_FRONT_RIGHT'
+			},
+			'ego2global_rotation': [-0.3439727237606584, 0.0030109717464176754, 0.01095793290504516, -0.9389108706710475],
+			'ego2global_translation': [992.0310248984529, 633.3391241886349, 0.0],
+ 			'gt_boxes': shape(N=14, 7),
+ 			'gt_names': array(['traffic_cone', 'pedestrian', 'movable_object.pushable_pullable', 'truck', 'pedestrian', 'construction_vehicle', 'car', 'truck', 'pedestrian', 'movable_object.pushable_pullable', 'truck', 'truck', 'pedestrian', 'movable_object.pushable_pullable'], dtype='<U32'),
+ 			'gt_velocity': shape(N=14, 2),
+ 			'lidar2ego_rotation': [0.7077955119163518, -0.006492242056004365, 0.010646214713995808, -0.7063073142877817],
+ 			'lidar2ego_translation': [0.943713, 0.0, 1.84023],
+ 			'lidar_path': './data/nuscenes/samples/LIDAR_TOP/n015-2018-07-18-11-07-57+0800__LIDAR_TOP__1531883536448428.pcd.bin',
+ 			'num_lidar_pts': array([   2,    6,    8,  901,    4,    0,    5,   56,    8,    0,    2, 2950,    0,    8]),
+ 			'num_radar_pts': array([ 0,  1,  0, 16,  0,  0,  8,  5,  0,  1,  4,  3,  0,  1]),
+ 			'sweeps': [{
+				'data_path': './data/nuscenes/sweeps/LIDAR_TOP/n015-2018-07-18-11-07-57+0800__LIDAR_TOP__1531883536398661.pcd.bin',
+				'ego2global_rotation': [-0.34404713915018337, 0.002972037176402744, 0.011341941489832476, -0.9388791686904328],
+				'ego2global_translation': [992.2404874149781, 633.1592032998211, 0.0],
+				'sample_data_token': '329963b71a2748a59ec113f8c45016a8',
+				'sensor2ego_rotation': [0.7077955119163518, -0.006492242056004365, 0.010646214713995808, -0.7063073142877817],
+				'sensor2ego_translation': [0.943713, 0.0, 1.84023],
+				'sensor2lidar_rotation': shape(3, 3),
+				'sensor2lidar_translation': array([-0.0037108 , -0.27666888, -0.00584491]),
+				'timestamp': 1531883536398661,
+				'type': 'lidar'
+			},...len(10)],
+			'timestamp': 1531883536448428,
+			'token': 'c36eb85918a84a788e236f5c9eef2b05'
+		},...]
+  }
+	*/
+	"data_item | ds_occ_data_tuple": "", /*
+	// imgs
+	[shape(3, 928, 1600),...len(6)],						// 图片数据，分别来自 6 个相机
+	// img_metas
+	{
+		'lidar2img': [shape(4, 4),...len(6)], 		// 激光雷达到像素坐标系的变换矩阵
+		'img_shape': [(928, 1600, 3), ...len(6)], // 图像尺寸，已统一
+	}
+	// processed_label
+	shape(H=100, W=100, D=8),									  // 体素标签
+	// grid_ind
+	shape(N=34688, 3),								          // 点云点的体素坐标
+	// labels
+	shape(N=34688, 1)                           // 点云点的语义标签
+	*/
+  "data_batch | ds_occ_data_batch": "", /*
+  // img2stack
+  Size(B, 6, C, H, W)
+  // meta2stack
+  [{
+		'lidar2img': [shape(4, 4),...len(6)], 		// 激光雷达到像素坐标系的变换矩阵
+		'img_shape': [(928, 1600, 3), ...len(6)], // 图像尺寸，已统一
+  }, len(B)]
+  // label2stack
+  Size(B, H=100, W=100, D=8)                  // 体素标签
+  // grid_ind_stack
+  Size(B, N=34688, 3)                         // 点云点的体素坐标
+  // point_label
+  Size(B, N=34688, 1)                         // 点云点的语义标签
+  */
+}

@@ -28,10 +28,14 @@ class TPVFormerEncoder(TransformerLayerSequence):
         assert num_points_in_pillar[1] == num_points_in_pillar[2] and num_points_in_pillar[1] % num_points_in_pillar[0] == 0
         self.pc_range = pc_range
         self.fp16_enabled = False
+        # Size(B, num_points_in_pillar, H*W, 3)[x,y,z]
         ref_3d_hw = self.get_reference_points(tpv_h, tpv_w, pc_range[5]-pc_range[2], num_points_in_pillar[0], '3d', device='cpu')
 
+        # Size(B, num_points_in_pillar, Z*H, 3)[y,z,x]
         ref_3d_zh = self.get_reference_points(tpv_z, tpv_h, pc_range[3]-pc_range[0], num_points_in_pillar[1], '3d', device='cpu')
+        # -> Size(3, B, num_points_in_pillar, Z*H)[x,y,z]
         ref_3d_zh = ref_3d_zh.permute(3, 0, 1, 2)[[2, 0, 1]]
+        # -> Size(B, num_points_in_pillar, Z*H, 3)[x,y,z]
         ref_3d_zh = ref_3d_zh.permute(1, 2, 3, 0)
 
         ref_3d_wz = self.get_reference_points(tpv_w, tpv_z, pc_range[4]-pc_range[1], num_points_in_pillar[2], '3d', device='cpu')
@@ -62,19 +66,24 @@ class TPVFormerEncoder(TransformerLayerSequence):
                 shape (bs, num_keys, num_levels, 2).
         """
 
+        # @# 获取三维参考点，相当于对单位立方体，按 (num_points_in_pillar, H, W) 的尺寸体素化，每个体素中心点即为采样点，输出 Size(B, num_points_in_pillar, H*W, 3)[x,y,z]
         # reference points in 3D space, used in spatial cross-attention (SCA)
         if dim == '3d':
+            # 从 [0.5, Z-0.5] 区间内均匀采样 num_points_in_pillar 个点，广播为 (num_points_in_pillar, H, W)，最后除 Z 归一化
             zs = torch.linspace(0.5, Z - 0.5, num_points_in_pillar, dtype=dtype,
                                 device=device).view(-1, 1, 1).expand(num_points_in_pillar, H, W) / Z
             xs = torch.linspace(0.5, W - 0.5, W, dtype=dtype,
                                 device=device).view(1, 1, -1).expand(num_points_in_pillar, H, W) / W
             ys = torch.linspace(0.5, H - 0.5, H, dtype=dtype,
                                 device=device).view(1, -1, 1).expand(num_points_in_pillar, H, W) / H
+            # 叠成 Size(num_points_in_pillar, H, W, 3)[x,y,z]
             ref_3d = torch.stack((xs, ys, zs), -1)
             ref_3d = ref_3d.permute(0, 3, 1, 2).flatten(2).permute(0, 2, 1)
+            # 输出 Size(B, num_points_in_pillar, H*W, 3)[x,y,z]
             ref_3d = ref_3d[None].repeat(bs, 1, 1, 1)
             return ref_3d
 
+        # @# 二维参考点同理 (H,W) 二维栅格的中心点，输出 Size(B, H*W, 1, 2)
         # reference points on 2D plane, used in temporal self-attention (TSA).
         elif dim == '2d':
             ref_y, ref_x = torch.meshgrid(
@@ -107,6 +116,7 @@ class TPVFormerEncoder(TransformerLayerSequence):
         reference_points[..., 2:3] = reference_points[..., 2:3] * \
             (pc_range[5] - pc_range[2]) + pc_range[2]
 
+        # Size(B, D=num_points_in_pillar, num_query=H*W, 3)[x,y,z] -> Size(B, D, num_query, 4) 增广点
         reference_points = torch.cat(
             (reference_points, torch.ones_like(reference_points[..., :1])), -1)
 
@@ -114,6 +124,8 @@ class TPVFormerEncoder(TransformerLayerSequence):
         D, B, num_query = reference_points.size()[:3]
         num_cam = lidar2img.size(1)
 
+        # -> Size(D, B, 1, num_query, 4) -> Size(D, B, num_cam, num_query, 4) -> Size(D, B, num_cam, num_query, 4, 1)
+        # 感觉最后 unsqueeze 增加一个维度没意义
         reference_points = reference_points.view(
             D, B, 1, num_query, 4).repeat(1, 1, num_cam, 1, 1).unsqueeze(-1)
 
@@ -124,6 +136,7 @@ class TPVFormerEncoder(TransformerLayerSequence):
                                             reference_points.to(torch.float32)).squeeze(-1)
         eps = 1e-5
 
+        # 过滤深度值为负数的像素点
         tpv_mask = (reference_points_cam[..., 2:3] > eps)
         reference_points_cam = reference_points_cam[..., 0:2] / torch.maximum(
             reference_points_cam[..., 2:3], torch.ones_like(reference_points_cam[..., 2:3]) * eps)
@@ -131,6 +144,7 @@ class TPVFormerEncoder(TransformerLayerSequence):
         reference_points_cam[..., 0] /= img_metas[0]['img_shape'][0][1]
         reference_points_cam[..., 1] /= img_metas[0]['img_shape'][0][0]
 
+        # 过滤掉投影到图像外的像素点
         tpv_mask = (tpv_mask & (reference_points_cam[..., 1:2] > 0.0)
                     & (reference_points_cam[..., 1:2] < 1.0)
                     & (reference_points_cam[..., 0:1] < 1.0)
@@ -141,6 +155,7 @@ class TPVFormerEncoder(TransformerLayerSequence):
             tpv_mask = tpv_mask.new_tensor(
                 np.nan_to_num(tpv_mask.cpu().numpy()))
 
+        # Size(D, B, num_cam, num_query, 2) -> Size(num_cam, B, num_query, D, 2)
         reference_points_cam = reference_points_cam.permute(2, 1, 3, 0, 4)
         tpv_mask = tpv_mask.permute(2, 1, 3, 0, 4).squeeze(-1)
 
@@ -175,17 +190,22 @@ class TPVFormerEncoder(TransformerLayerSequence):
 
         bs = tpv_query[0].shape[0]
 
+        # @# 遍历三个视角的三维参考点分别获取其对应的参考像素坐标
         reference_points_cams, tpv_masks = [], []
         ref_3ds = [self.ref_3d_hw, self.ref_3d_zh, self.ref_3d_wz]
         for ref_3d in ref_3ds:
+            # Size(num_cam, B, num_query, D=num_points_in_pillar, 2)
             reference_points_cam, tpv_mask = self.point_sampling(
                 ref_3d, self.pc_range, kwargs['img_metas']) # num_cam, bs, hw++, #p, 2
             reference_points_cams.append(reference_points_cam)
             tpv_masks.append(tpv_mask)
         
+        # Size(B, num_query=H*W, 1, 2) -> Size(B, num_query, 1, 2) 
         ref_2d_hw = self.ref_2d_hw.clone().expand(bs, -1, -1, -1)
+        # Size(2B, num_query, 1, 2)
         hybird_ref_2d = torch.cat([ref_2d_hw, ref_2d_hw], 0)
 
+        # @# 顺序执行 TPVFormerLayer 层（这里为相同配置的三层）
         for lid, layer in enumerate(self.layers):
             output = layer(
                 tpv_query,
